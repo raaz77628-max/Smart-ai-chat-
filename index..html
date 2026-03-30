@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartAI Chat + Builder Pro</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#343541;color:white;}
+.header{background:#202123;padding:12px;display:flex;align-items:center;gap:10px;}
+.logo{width:40px;height:40px;border-radius:50%;background:#10a37f;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:18px;}
+.title{font-size:18px;font-weight:bold;flex:1;text-align:center;}
+#loginPage,#chatPage{max-width:400px;margin:50px auto;background:#202123;padding:25px;border-radius:15px;text-align:center;}
+input,textarea,select{width:90%;padding:10px;margin:10px 0;border-radius:8px;border:none;}
+button{padding:10px;border-radius:8px;border:none;background:#10a37f;color:white;margin:5px;cursor:pointer;transition:0.2s;}
+button:hover{background:#0e8f6b;}
+#chatbox{background:#202123;padding:15px;border-radius:15px;min-height:200px;margin:15px;overflow-y:auto;max-height:300px;}
+.user{background:#10a37f;padding:10px;border-radius:10px;margin:8px 0;text-align:right;word-wrap:break-word;}
+.bot{background:#444654;padding:10px;border-radius:10px;margin:8px 0;word-wrap:break-word;}
+.loader{background:#444654;padding:10px;border-radius:10px;width:fit-content;margin:8px 0;}
+#websiteBuilder{display:none;background:#202123;padding:15px;border-radius:15px;margin:15px;}
+#builderArea{background:#2b2b2b;min-height:300px;padding:10px;border-radius:10px;margin-bottom:10px;position:relative;overflow:hidden;}
+.draggable{padding:8px;border:1px dashed #888;margin:5px 0;cursor:move;background:#444654;position:absolute;}
+.controlPanel{margin-bottom:10px;text-align:center;}
+input[type=color],input[type=number],select{width:auto;display:inline-block;margin:0 5px;}
+@media(max-width:480px){#loginPage,#chatPage{width:95%;margin:20px auto;}}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="logo">AI</div>
+<div class="title">SmartAI Chat + Builder Pro</div>
+</div>
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+<h2>Login / Signup</h2>
+<input type="email" id="email" placeholder="Enter Email ID">
+<input type="password" id="password" placeholder="Enter Password"><br>
+<button onclick="signup()">Signup</button>
+<button onclick="login()">Login</button>
+</div>
+<!-- CHAT PAGE -->
+<div id="chatPage" style="display:none;">
+<div style="margin:10px;">
+<label><input type="radio" name="mode" value="fast" checked onclick="mode='fast'"> Fast Mode (No API)</label><br>
+<label><input type="radio" name="mode" value="userAPI" onclick="mode='userAPI'"> User API Mode</label><br>
+<label><input type="radio" name="mode" value="defaultAPI" onclick="mode='defaultAPI'"> Default API Mode</label><br>
+<label><input type="radio" name="mode" value="masterAPI" onclick="mode='masterAPI'"> Master API Mode</label>
+</div>
+<!-- API Key Inputs -->
+<div id="apiKeyDiv">
+<input type="text" id="userApiKey" placeholder="Enter your OpenAI API Key (User)">
+<button onclick="saveApiKey()">Save User API Key</button>
+</div>
+<div id="masterApiDiv">
+<input type="text" id="masterApiKey" placeholder="Enter Master API Key">
+<button onclick="saveMasterApiKey()">Save Master API Key</button>
+</div>
+<div id="chatbox"></div>
+<div class="inputArea">
+<input type="text" id="userInput" placeholder="Kuch bhi pucho...">
+<button onclick="sendMessage()">Send</button>
+<button onclick="startVoice()">🎤 Speak</button>
+<button onclick="downloadThisWebsite()">Download Chat App</button>
+<button onclick="showBuilder()">Make Your Website</button>
+<button onclick="logout()">Logout</button>
+</div>
+<!-- WEBSITE BUILDER -->
+<div id="websiteBuilder">
+<h3>Drag & Drop Website Builder</h3>
+<div class="controlPanel">
+<button onclick="addElement('h1')">Heading</button>
+<button onclick="addElement('p')">Paragraph</button>
+<button onclick="addElement('button')">Button</button>
+<button onclick="addElement('img')">Image</button><br>
+<label>Font Size:</label><input type="number" id="fontSize" value="16" onchange="updateSelectedStyle()">
+<label>Text Color:</label><input type="color" id="textColor" value="#ffffff" onchange="updateSelectedStyle()">
+<label>Background:</label><input type="color" id="bgColor" value="#444654" onchange="updateSelectedStyle()">
+</div>
+<div id="builderArea"></div>
+<button onclick="downloadUserWebsite()">Download Your Website</button>
+</div>
+<script>
+let currentUser="";
+let userApiKey="";
+let masterApiKey="";
+const defaultApiKey = "sk-YOUR_DEFAULT_API_KEY";
+let selectedElement=null;
+let mode="fast";
+// LOGIN / SIGNUP
+function signup(){
+    const email=document.getElementById("email").value.trim();
+    const pass=document.getElementById("password").value.trim();
+    if(!email || !pass){alert("Email aur password dalen!"); return;}
+    localStorage.setItem("user_"+email,pass);
+    alert("Account ban gaya!");
+}
+function login(){
+    const email=document.getElementById("email").value.trim();
+    const pass=document.getElementById("password").value.trim();
+    const saved=localStorage.getItem("user_"+email);
+    if(saved===pass){
+        currentUser=email;
+        document.getElementById("loginPage").style.display="none";
+        document.getElementById("chatPage").style.display="block";
+        loadChat();
+    }else{alert("Email ya password galat!");}
+}
+// SAVE API KEYS
+function saveApiKey(){
+    const k=document.getElementById("userApiKey").value.trim();
+    if(k){userApiKey=k; alert("User API saved!"); document.getElementById("apiKeyDiv").style.display="none";}
+    else alert("Enter a valid API Key!");
+}
+function saveMasterApiKey(){
+    const k=document.getElementById("masterApiKey").value.trim();
+    if(k){masterApiKey=k; alert("Master API saved!"); document.getElementById("masterApiDiv").style.display="none";}
+    else alert("Enter a valid API Key!");
+}
+// CHAT FUNCTIONS
+function saveChat(msg,type){
+    let c=JSON.parse(localStorage.getItem(currentUser+"_chat"))||[];
+    c.push({msg,type});
+    localStorage.setItem(currentUser+"_chat",JSON.stringify(c));
+}
+function loadChat(){
+    let c=JSON.parse(localStorage.getItem(currentUser+"_chat"))||[];
+    c.forEach(i=>{
+        document.getElementById("chatbox").innerHTML+="<div class='"+i.type+"'>"+i.msg+"</div>";
+    });
+    document.getElementById("chatbox").scrollTop=document.getElementById("chatbox").scrollHeight;
+}
+function startVoice(){
+    const r=new webkitSpeechRecognition();
+    r.lang="hi-IN"; r.start();
+    r.onresult=function(e){
+        document.getElementById("userInput").value=e.results[0][0].transcript;
+        sendMessage();
+    };
+}
+async function sendMessage(){
+    const text=document.getElementById("userInput").value.trim();
+    if(!text) return;
+    displayUserMessage(text);
+    if(mode==="fast"){ displayBotMessage(getFastReply(text)); }
+    else{
+        let apiKeyToUse=mode==="userAPI"?userApiKey:(mode==="defaultAPI"?defaultApiKey:masterApiKey);
+        try{
+            const response = await fetch("https://api.openai.com/v1/chat/completions",{
+                method:"POST",
+                headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKeyToUse},
+                body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:text}]})
+            });
+            const data = await response.json();
+            const reply = data.choices[0].message.content;
+            displayBotMessage(reply);
+        }catch(e){displayBotMessage("API request failed. Fast mode me try karo.");}
+    }
+    document.getElementById("userInput").value="";
+}
+function displayUserMessage(msg){const box=document.getElementById("chatbox");box.innerHTML+="<div class='user'>"+msg+"</div>";saveChat(msg,"user");box.scrollTop=box.scrollHeight;}
+function displayBotMessage(msg){const box=document.getElementById("chatbox");let div=document.createElement("div");div.className="bot";box.appendChild(div);let i=0;function typing(){if(i<msg.length){div.innerHTML+=msg.charAt(i);i++;setTimeout(typing,15);}}typing();saveChat(msg,"bot");box.scrollTop=box.scrollHeight;}
+function getFastReply(text){
+    text=text.toLowerCase();
+    if(text.includes("hello")||text.includes("hi")) return "Hi! Kaise ho? (Fast Mode)";
+    if(text.includes("weather")) return "Mujhe abhi weather ka data nahi pata. (Fast Mode)";
+    if(text.includes("time")) return "Abhi ka samay nahi pata. (Fast Mode)";
+    return "Ye fast mode response hai. Agar API mode select karo to full AI response milega.";
+}
+function logout(){location.reload();}
+// DOWNLOAD WEBSITE
+function downloadThisWebsite(){
+    const fullCode=document.documentElement.outerHTML;
+    const blob=new Blob([fullCode],{type:"text/html"});
+    const link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download="smartai-chat.html";
+    link.click();
+}
+// WEBSITE BUILDER
+function showBuilder(){document.getElementById("websiteBuilder").style.display="block";}
+let selectedElement=null;
+function addElement(tag){
+    let el;if(tag==="img"){el=document.createElement("img");el.src="https://via.placeholder.com/150";el.style.width="150px";}
+    else{el=document.createElement(tag);el.innerText=tag.toUpperCase();}
+    el.className="draggable";el.style.left="10px";el.style.top="10px";el.style.position="absolute";
+    el.onclick=function(e){selectedElement=e.target;e.stopPropagation();updateControls();};
+    el.onmousedown=dragMouseDown;
+    document.getElementById("builderArea").appendChild(el);
+}
+function updateControls(){if(selectedElement){document.getElementById("fontSize").value=parseInt(window.getComputedStyle(selectedElement).fontSize)||16;document.getElementById("textColor").value=rgbToHex(window.getComputedStyle(selectedElement).color);document.getElementById("bgColor").value=rgbToHex(window.getComputedStyle(selectedElement).backgroundColor);}}
+function updateSelectedStyle(){if(selectedElement){selectedElement.style.fontSize=document.getElementById("fontSize").value+"px";selectedElement.style.color=document.getElementById("textColor").value;selectedElement.style.backgroundColor=document.getElementById("bgColor").value;}}
+function dragMouseDown(e){e.preventDefault();selectedElement=e.target;let pos3=e.clientX,pos4=e.clientY;document.onmousemove=function(ev){ev.preventDefault();let pos1=pos3-ev.clientX,pos2=pos4-ev.clientY;pos3=ev.clientX;pos4=ev.clientY;selectedElement.style.top=(selectedElement.offsetTop-pos2)+"px";selectedElement.style.left=(selectedElement.offsetLeft-pos1)+"px";};document.onmouseup=function(){document.onmousemove=null;document.onmouseup=null;}}
+function rgbToHex(rgb){const result=rgb.match(/\d+/g);return "#"+((1<<24)+(parseInt(result[0])<<16)+(parseInt(result[1])<<8)+parseInt(result[2])).toString(16).slice(1);}
+function downloadUserWebsite(){
+    const builder=document.getElementById("builderArea");
+    let html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>My Website</title></head><body>`;
+    builder.querySelectorAll(".draggable").forEach(e=>{
+        let tag=e.tagName.toLowerCase();
+        if(tag==="img") html+=`<img src="${e.src}" style="position:absolute; left:${e.offsetLeft}px; top:${e.offsetTop}px; width:${e.style.width}; background:${e.style.backgroundColor};">`;
+        else html+=`<${tag} style="position:absolute; left:${e.offsetLeft}px; top:${e.offsetTop}px; font-size:${e.style.fontSize}; color:${e.style.color}; background:${e.style.backgroundColor};">${e.innerText}</${tag}>`;
+    });
+    html+="</body></html>";
+    const blob=new Blob([html],{type:"text/html"});
+    const link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download="user-website.html";
+    link.click();
+}
+</script>
+</body>
+</html>
