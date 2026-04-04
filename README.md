@@ -1,2 +1,2 @@
- Smart-ai-chat-
+ Smart ai chat-
 
