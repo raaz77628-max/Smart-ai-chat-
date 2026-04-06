@@ -6,7 +6,41 @@
 <title>SmartAI Chat + Builder Pro</title>
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#343541;color:white;}
-.header{background:#202123;padding:12px;display:flex;align-items:center;gap:10px;}
+.header{background:#202123;padding:12px; /* 📱 MOBILE RESPONSIVE FIX */
+@media(max-width:600px){
+
+.header{
+flex-direction:column;
+text-align:center;
+gap:5px;
+}
+
+#chatPage{
+display:flex;
+flex-direction:column;
+align-items:center;
+}
+
+#apiKeyDiv,#masterApiDiv{
+display:flex;
+flex-direction:column;
+align-items:center;
+}
+
+#chatbox{
+width:95%;
+margin:auto;
+}
+
+.inputArea{
+width:95%;
+}
+
+button{
+width:90%;
+}
+
+} ;gap:10px;}
 .logo{width:40px;height:40px;border-radius:50%;background:#10a37f;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:18px;}
 .title{font-size:18px;font-weight:bold;flex:1;text-align:center;#loginPage,#chatPage{
 width:95%;
